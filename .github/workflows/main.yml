@@ -1,0 +1,30 @@
+name: CF-Active
+
+on:
+  schedule:
+    - cron: "*30 0 * * *"
+  workflow_dispatch:
+
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: true
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Container
+        uses: docker://ghcr.io/uncleluogithub/cf-keepalive:latest
+        env:
+          CF_USERNAME: ${{ secrets.USERNAME }}
+          CF_PASSWORD: ${{ secrets.PASSWORD }}
+          CF_API:      ${{ secrets.API }}
+          CF_ORG:      ${{ secrets.ORG }}
+          CF_SPACE:    ${{ secrets.SPACE }}
+          CF_APP:      ${{ secrets.APP }}
+          CF_SET_PROCESS_HC: "true"
+          # 调试时打开
+          # DEBUG: "1"
+          # CF_TRACE: "true"
