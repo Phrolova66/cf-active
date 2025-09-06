@@ -5,26 +5,44 @@ on:
     - cron: "30 0 * * *"
   workflow_dispatch:
 
-
-concurrency:
-  group: keepalive
-  cancel-in-progress: true
-
 jobs:
   keepalive:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 8
+
     steps:
-      - name: Container
-        uses: docker://ghcr.io/uncleluogithub/cf-keepalive:latest
+      - name: 安装 Cloud Foundry CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget
+          wget -q -O cf-cli.deb "https://packages.cloudfoundry.org/stable?release=debian64&source=github"
+          sudo dpkg -i cf-cli.deb
+
+      - name: 登录 CF
+        run: |
+          cf api $CF_API
+          cf login -u "$CF_USERNAME" -p "$CF_PASSWORD" -o "$CF_ORG" -s "$CF_SPACE"
         env:
           CF_USERNAME: ${{ secrets.USERNAME }}
           CF_PASSWORD: ${{ secrets.PASSWORD }}
           CF_API:      ${{ secrets.API }}
           CF_ORG:      ${{ secrets.ORG }}
           CF_SPACE:    ${{ secrets.SPACE }}
-          CF_APP:      ${{ secrets.APP }}
-          CF_SET_PROCESS_HC: "true"
-          # 调试时打开
-          # DEBUG: "1"
-          # CF_TRACE: "true"
+
+      - name: 设置健康检查方式
+        run: cf set-health-check "$CF_APP" process
+        env:
+          CF_APP: ${{ secrets.APP }}
+
+      - name: 检查并启动应用
+        run: |
+          STATUS=$(cf app "$CF_APP" | grep '#0' | awk '{print $2}')
+          echo "当前状态: $STATUS"
+          if [ "$STATUS" != "running" ]; then
+            echo "应用未运行，执行 cf start..."
+            cf start "$CF_APP"
+          else
+            echo "应用正常运行中。"
+          fi
+        env:
+          CF_APP: ${{ secrets.APP }}
