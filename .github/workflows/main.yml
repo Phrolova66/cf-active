@@ -19,30 +19,25 @@ jobs:
           sudo dpkg -i cf-cli.deb
 
       - name: 登录 CF
+        env:
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          api:      ${{ secrets.API }}
+          org:      ${{ secrets.ORG }}
+          space:    ${{ secrets.SPACE }}
         run: |
-          cf api $CF_API
-          cf login -u "$CF_USERNAME" -p "$CF_PASSWORD" -o "$CF_ORG" -s "$CF_SPACE"
-        env:
-          CF_USERNAME: ${{ secrets.USERNAME }}
-          CF_PASSWORD: ${{ secrets.PASSWORD }}
-          CF_API:      ${{ secrets.API }}
-          CF_ORG:      ${{ secrets.ORG }}
-          CF_SPACE:    ${{ secrets.SPACE }}
-
-      - name: 设置健康检查方式
-        run: cf set-health-check "$CF_APP" process
-        env:
-          CF_APP: ${{ secrets.APP }}
+          cf api $api
+          cf login -u "$username" -p "$password" -o "$org" -s "$space"
 
       - name: 检查并启动应用
+        env:
+          app: ${{ secrets.APP }}
         run: |
-          STATUS=$(cf app "$CF_APP" | grep '#0' | awk '{print $2}')
-          echo "当前状态: $STATUS"
-          if [ "$STATUS" != "running" ]; then
+          status = $(cf app "$app" | grep '#0' | awk '{print $2}')
+          echo "当前状态: $status"
+          if [ "$status" != "running" ]; then
             echo "应用未运行，执行 cf start..."
-            cf start "$CF_APP"
+            cf start "$app"
           else
             echo "应用正常运行中。"
           fi
-        env:
-          CF_APP: ${{ secrets.APP }}
