@@ -2,19 +2,16 @@ name: CF-Active
 
 on:
   schedule:
-    - cron: "30 0 * * *"
+    - cron: "30 22 * * *"
   workflow_dispatch:
 
 jobs:
-  keepalive:
+  alive:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
 
     steps:
       - name: 安装 Cloud Foundry CLI
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget
           wget -q -O cf-cli.deb "https://packages.cloudfoundry.org/stable?release=debian64&source=github"
           sudo dpkg -i cf-cli.deb
 
@@ -29,15 +26,8 @@ jobs:
           cf api $api
           cf login -u "$username" -p "$password" -o "$org" -s "$space"
 
-      - name: 检查并启动应用
+      - name: 启动应用
         env:
           app: ${{ secrets.APP }}
         run: |
-          status = $(cf app "$app" | grep '#0' | awk '{print $2}')
-          echo "当前状态: $status"
-          if [ "$status" != "running" ]; then
-            echo "应用未运行，执行 cf start..."
-            cf start "$app"
-          else
-            echo "应用正常运行中。"
-          fi
+          cf restart "$app"
